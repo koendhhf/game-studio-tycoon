@@ -15,7 +15,9 @@ phases on top of this, not as a rewrite of it.
 
 ```bash
 npm install
-npm run dev        # vite dev server, http://localhost:5173
+npm run dev        # vite dev server, http://localhost:5173 (hot reload on)
+npm run dev:preview  # same server, dev-client websocket removed — for tunnels/iframe previews
+npm run preview    # serve the production build, 0.0.0.0:5173
 npm test           # 217 tests, no browser required (~25 s)
 npm run typecheck  # tsc --noEmit, strict
 npm run build      # typecheck + production bundle
@@ -26,6 +28,19 @@ npm run sim:play -- 8                  # scripted "competent player" over 8 year
 `npm run sim` is the fastest way to see the whole machine working: it runs the industry, prints
 market and review distributions, checks that a save round-trips byte-identically, and verifies that
 a restored world keeps matching the uninterrupted one.
+
+### Serving the UI behind a proxy or an iframe preview
+
+`vite.config.ts` binds the dev and preview servers to `0.0.0.0:5173`, accepts any host
+(`allowedHosts: true`, because hosted preview URLs are generated per session) and keeps CORS
+permissive — the app only ever requests relative URLs, so there is nothing origin-bound to protect.
+
+When the server sits behind a proxy that does not reliably upgrade websockets, use
+`npm run dev:preview`. It serves the exact same dev module graph but strips the injected HMR client
+from `index.html`: an HMR socket that cannot connect makes Vite's client fall back to
+`wss://localhost:5173` (the viewer's own machine) and then reload-poll the page, which looks like a
+preview that never loads. `npm run preview` (the production bundle) is the fully static alternative
+and contains no dev client either. Plain `npm run dev` is unchanged and still hot-reloads.
 
 ## Layout
 
