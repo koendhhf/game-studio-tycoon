@@ -20,7 +20,8 @@ npm run dev:preview  # same server, dev-client websocket removed — for tunnels
 npm run preview    # serve the production build, 0.0.0.0:5173
 npm test           # 217 tests, no browser required (~25 s)
 npm run typecheck  # tsc --noEmit, strict
-npm run build      # typecheck + production bundle
+npm run build      # typecheck + production bundle (mounted at /)
+npm run build:pages  # the bundle GitHub Pages serves (mounted at /game-studio-tycoon/)
 npm run sim -- --seed 3 --years 5      # headless 5-year industry run + report
 npm run sim:play -- 8                  # scripted "competent player" over 8 years, 5 seeds
 ```
@@ -28,6 +29,36 @@ npm run sim:play -- 8                  # scripted "competent player" over 8 year
 `npm run sim` is the fastest way to see the whole machine working: it runs the industry, prints
 market and review distributions, checks that a save round-trips byte-identically, and verifies that
 a restored world keeps matching the uninterrupted one.
+
+### Production deployment (GitHub Pages)
+
+The live game lives at **<https://koendhhf.github.io/game-studio-tycoon/>**, published by
+`.github/workflows/pages.yml`. That workflow is the only thing that deploys, and it runs on pushes
+to `main` (plus `workflow_dispatch`): install → `npm run typecheck` → `npm test` → `npm run
+build:pages` → upload `dist/` → `actions/deploy-pages`. A failing type-check or test therefore
+cannot reach the live URL.
+
+Two hosting details are worth knowing:
+
+- **Base path.** A Pages *project* site is served from `/<repo>/`, so the deployed bundle has to
+  use matching asset URLs. That is what `PAGES_BASE` is for: `npm run build:pages` builds with
+  `PAGES_BASE=/game-studio-tycoon/`, while plain `npm run build` (and both dev servers) build and
+  serve at `/`. Set `PAGES_BASE=/` if the game ever moves to a custom domain or a user site root.
+- **Deep links.** The game has no client-side router — screens are selected in state, not by URL —
+  so nothing needs history rewriting. The workflow still copies `index.html` to `404.html`, which
+  is the Pages way to serve the app for a mistyped path instead of GitHub's 404 page.
+
+One-time repository setting, which no workflow can do for itself: **Settings → Pages → Build and
+deployment → Source: GitHub Actions**. Until that is set the deploy job reports `Pages is not
+enabled` (the build job still passes). Note that Pages on a *private* repository needs a paid plan
+and a signed-in GitHub session, so for a game you want to open on a phone the repository has to be
+public.
+
+To see exactly what gets deployed, without deploying anything:
+
+```bash
+npm run preview:pages   # build + serve the production bundle at http://localhost:5173/game-studio-tycoon/
+```
 
 ### Serving the UI behind a proxy or an iframe preview
 

@@ -1,0 +1,96 @@
+# Production deployment for Studio Mogul.
+#
+# Runs on every push to `main` (and can be started by hand) and is the *only* thing that publishes
+# the live game: feature branches and Arena's working branch never touch Pages, because the `push`
+# trigger below is restricted to `main`.
+#
+# One-time repository setup (Settings → Pages → Build and deployment):
+#   Source: **GitHub Actions**
+# That switch cannot be flipped from a workflow — `GITHUB_TOKEN` has no permission to enable Pages.
+# Until it is set, `deploy` fails with "Pages is not enabled" while `build` passes, so the missing
+# step is visible and it is exactly the one line above. (Alternatively, give `configure-pages`
+# `enablement: 'true'` with a `token:` that has `pages:write` + `administration:write`.)
+#
+# The pipeline is deliberately verify-then-publish: type-check and the full test suite run *before*
+# anything is deployed, so a red main can never push a broken game to the live URL.
+name: Deploy production build to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# A second deploy must not start while one is in flight: Pages has a single production slot.
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Type-check, test, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          # package.json requires node >= 20; 22 is the LTS the lockfile is verified against.
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies from the lockfile
+        run: npm ci
+
+      - name: Type-check (strict)
+        run: npm run typecheck
+
+      - name: Run the full test suite (no browser needed)
+        run: npm test
+
+      - name: Build the production bundle for /game-studio-tycoon/
+        # PAGES_BASE is what prefixes every asset URL. Without it the app would ask for /assets/…
+        # at the site root and render an empty page under the project path.
+        run: npm run build:pages
+
+      - name: Verify the build is mounted under the Pages base path
+        run: |
+          test -f dist/index.html
+          grep -q '/game-studio-tycoon/assets/' dist/index.html
+          if grep -q 'sourceMappingURL' dist/index.html; then
+            echo "::error::the production bundle must not reference source maps" && exit 1
+          fi
+
+      - name: Serve the game for unknown deep links
+        # GitHub Pages has no SPA rewrite rule; a copy named 404.html is the documented way to make
+        # any stray path under /game-studio-tycoon/ load the game instead of Pages' 404 page.
+        run: cp dist/index.html dist/404.html
+
+      - name: Upload the site bundle
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist
+
+  deploy:
+    name: Publish to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Configure Pages
+        uses: actions/configure-pages@v6
+
+      - name: Deploy dist to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v5
