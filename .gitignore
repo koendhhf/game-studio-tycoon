@@ -1,0 +1,12 @@
+node_modules/
+dist/
+dist-ssr/
+coverage/
+*.tsbuildinfo
+.DS_Store
+.env
+.env.local
+*.log
+.vite/
+.cache/
+tmp/
