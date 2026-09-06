@@ -1,0 +1,39 @@
+{
+  "name": "studio-mogul",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Studio Mogul \u2014 a deep, fully simulated video-game industry management game.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "vite",
+    "dev:preview": "ARENA_PREVIEW=1 vite",
+    "build": "tsc --noEmit && vite build",
+    "build:pages": "PAGES_BASE=/game-studio-tycoon/ vite build --no-sourcemap",
+    "preview": "vite preview --host 0.0.0.0",
+    "preview:pages": "npm run build:pages && PAGES_BASE=/game-studio-tycoon/ vite preview --host 0.0.0.0",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:sim": "vitest run tests/sim",
+    "test:ui": "vitest run tests/ui",
+    "sim": "tsx tools/sim-cli.ts",
+    "sim:play": "tsx tools/measure-play.ts"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.1",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11",
+    "vitest": "^2.1.8"
+  }
+}
